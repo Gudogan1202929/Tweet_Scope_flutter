@@ -1,12 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:circular_chart_flutter/circular_chart_flutter.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
+import 'package:tweet_scope/Auth/Login.dart';
 import 'package:tweet_scope/models/ChartModel.dart';
 import 'package:tweet_scope/models/CountryData.dart';
 import 'package:tweet_scope/models/OffensiveData.dart';
@@ -24,6 +26,7 @@ class _ListUserState extends State<ListUser> {
     Dashboard(),
     Offinsiive(),
     Region(),
+    TestModel(),
   ];
   var selectedIndex = 0;
 
@@ -34,6 +37,7 @@ class _ListUserState extends State<ListUser> {
     if (isPhone) {
       return Scaffold(
         appBar: AppBar(
+          backgroundColor: const Color.fromARGB(255, 54, 165, 255),
           title: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -47,6 +51,8 @@ class _ListUserState extends State<ListUser> {
           currentIndex: selectedIndex,
           selectedItemColor: Colors.blue,
           unselectedItemColor: Colors.black87,
+          backgroundColor: Colors.white,
+          type: BottomNavigationBarType.fixed,
           items: [
             BottomNavigationBarItem(
               icon: Icon(Icons.topic),
@@ -63,6 +69,11 @@ class _ListUserState extends State<ListUser> {
               label: "Regions",
               backgroundColor: Colors.blue,
             ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.map),
+              label: "Test Models",
+              backgroundColor: Colors.blue,
+            ),
           ],
           onTap: (index) {
             setState(() {
@@ -75,6 +86,233 @@ class _ListUserState extends State<ListUser> {
     } else {
       return DashDesk();
     }
+  }
+}
+
+class TestModel extends StatefulWidget {
+  const TestModel({super.key});
+
+  @override
+  State<TestModel> createState() => _TestModelState();
+}
+
+class _TestModelState extends State<TestModel> {
+  var response = http.Response('', 200);
+  String? token;
+  String result = "";
+  String ipAddress = 'IP address not found';
+  int touchedIndex = -1;
+  String data = "";
+  TextEditingController textEditingController = TextEditingController();
+
+  Future<String> getIsAbusive(String message) async {
+    print(token);
+    ipAddress = await getIpAddress();
+
+    final userData = {
+      "message": message,
+    };
+
+    final jsonData = jsonEncode(userData);
+
+    var url;
+    if (kIsWeb) {
+      url = Uri.parse('http://127.0.0.1:9096/model/abusive');
+    } else if (Platform.isAndroid) {
+      url = Uri.parse('http://10.0.2.2:9096/model/abusive');
+    } else if (Platform.isIOS) {
+      url = Uri.parse('http://localhost:9096/model/abusive');
+    } else {
+      url = Uri.parse('http://127.0.0.1:9096/model/abusive');
+    }
+
+    response = await http.post(
+      url,
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json; charset=UTF-8",
+        "token": '$token',
+        "X-Forwarded-For": ipAddress,
+      },
+      body: jsonData,
+    );
+
+    if (response.statusCode == 401) {
+      Navigator.of(context).pushReplacementNamed("Login");
+      return "";
+    } else if (response.statusCode == 200) {
+      data = response.body;
+      return data;
+    } else {
+      throw Exception(response.body);
+    }
+  }
+
+  Future<String> getIsTopic(String message) async {
+    ipAddress = await getIpAddress();
+
+    var url;
+    if (kIsWeb) {
+      url = Uri.parse('http://127.0.0.1:9096/model/topic');
+    } else if (Platform.isAndroid) {
+      url = Uri.parse('http://10.0.2.2:9096/model/topic');
+    } else if (Platform.isIOS) {
+      url = Uri.parse('http://localhost:9096/model/topic');
+    } else {
+      url = Uri.parse('http://127.0.0.1:9096/model/topic');
+    }
+
+    response = await http.post(
+      url,
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "token": '$token',
+        "X-Forwarded-For": ipAddress,
+      },
+      body: jsonEncode({'message': message}),
+    );
+
+    if (response.statusCode == 401) {
+      Navigator.of(context).pushReplacementNamed("Login");
+      return "";
+    } else if (response.statusCode == 200) {
+      data = response.body;
+      return data;
+    } else {
+      throw Exception(response.body);
+    }
+  }
+
+  Future<String> getIpAddress() async {
+    if (kIsWeb) {
+      try {
+        final response =
+            await http.get(Uri.parse('https://api.ipify.org?format=json'));
+        if (response.statusCode == 200) {
+          final ipAddress = jsonDecode(response.body)['ip'];
+          return ipAddress;
+        }
+      } catch (e) {
+        print('Error getting IP address: $e');
+      }
+      return 'IP address not found';
+    } else {
+      final interfaces = await NetworkInterface.list();
+      for (var interface in interfaces) {
+        for (var addr in interface.addresses) {
+          if (addr.type.name.toLowerCase() == 'ipv4') {
+            return addr.address;
+          }
+        }
+      }
+      return 'IP address not found';
+    }
+  }
+
+  void showMyDialog(BuildContext context, String content) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AwesomeDialog(
+        context: context,
+        dialogType: DialogType.SUCCES,
+        animType: AnimType.BOTTOMSLIDE,
+        title: content,
+        desc: 'Our model classified this as: $content',
+        btnOkOnPress: () {},
+      )..show();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final arguments = ModalRoute.of(context)?.settings.arguments;
+    if (arguments != null) {
+      token = arguments as String;
+    }
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Image(image: AssetImage("images/twitter.png"), height: 200),
+          Spacer(),
+          Text(
+            "Our Modles built in Machine lerning using bert and it accurate , you can test it here",
+            style: TextStyle(
+              fontSize: 15,
+              fontFamily: "NotoSerif",
+              color: Colors.black54,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          Spacer(),
+          Flexible(
+            child: TextField(
+              controller: textEditingController,
+              maxLines: null, // Allows TextField to expand
+              decoration: InputDecoration(
+                contentPadding:
+                    EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15.0),
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                hintText: 'Enter your text here...',
+              ),
+              style: TextStyle(fontSize: 16),
+            ),
+          ),
+          Spacer(),
+          Container(
+            child: Row(children: [
+              ElevatedButton(
+                onPressed: () async {
+                  String message = textEditingController.text;
+                  String result = await getIsAbusive(message);
+                  showMyDialog(context, result);
+                },
+                child: Text(
+                  "Check if Abusive",
+                  style: TextStyle(color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  primary: Colors.blue,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: MediaQuery.sizeOf(context).width / 8 - 20,
+                      vertical: 18),
+                ),
+              ),
+              Spacer(),
+              ElevatedButton(
+                onPressed: () async {
+                  String message = textEditingController.text;
+                  String result = await getIsTopic(message);
+                  showMyDialog(context, result);
+                },
+                child: Text(
+                  "Check the Topic",
+                  style: TextStyle(color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  primary: Colors.blue,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: MediaQuery.sizeOf(context).width / 8 - 20,
+                      vertical: 18),
+                ),
+              ),
+            ]),
+          )
+        ],
+      ),
+    );
   }
 }
 
@@ -258,22 +496,7 @@ class _DashboardState extends State<Dashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            FutureBuilder<List<TopicData>>(
-              future: getData(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return CircularProgressIndicator();
-                } else if (snapshot.hasError) {
-                  return Text('Error: ${snapshot.error}');
-                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Text('No data available');
-                } else {
-                  final topicDataList = snapshot.data!;
-                  return buildTopicsClassificationContainer(
-                      context, topicDataList);
-                }
-              },
-            ),
+            buildTopicsContainerForLoad(context),
             SizedBox(height: 20),
             buildRecentTopicsContainer(context),
           ],
@@ -282,18 +505,17 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  Container buildTopicsClassificationContainer(
-      BuildContext context, List<TopicData> topicDataList) {
+  Container buildTopicsContainerForLoad(BuildContext context) {
     return Container(
       width: double.infinity,
-      height: MediaQuery.of(context).size.height / 2,
+      height: MediaQuery.of(context).size.height / 2 - 68,
       margin: EdgeInsets.all(8.0),
       child: Card(
         elevation: 5,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.0),
         ),
-        color: Color.fromARGB(255, 238, 236, 236),
+        color: Colors.white,
         child: Column(
           children: <Widget>[
             Container(
@@ -311,20 +533,42 @@ class _DashboardState extends State<Dashboard> {
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Text(
-                  'Topics Classification',
+                  'Topics Classifications',
                   style: TextStyle(
                     fontSize: 24,
-                    color: Color.fromARGB(255, 255, 255, 255),
+                    color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ),
-            SizedBox(height: 20),
-            Container(
+            SizedBox(height: 10),
+            Expanded(
+              child: buildTopicsClassificationContainer(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Container buildTopicsClassificationContainer(BuildContext context) {
+    return Container(
+      child: FutureBuilder<List<TopicData>>(
+        future: getData(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Center(child: Text('No data available'));
+          } else {
+            final topicDataList = snapshot.data!;
+            return Container(
               constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height / 2.8,
-                  minHeight: MediaQuery.of(context).size.height / 2.8),
+                  maxHeight: MediaQuery.sizeOf(context).width / 5,
+                  minHeight: MediaQuery.sizeOf(context).width / 5),
               child: SfCircularChart(
                 series: <CircularSeries>[
                   PieSeries<TopicData, String>(
@@ -343,9 +587,9 @@ class _DashboardState extends State<Dashboard> {
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
+            );
+          }
+        },
       ),
     );
   }
@@ -519,18 +763,17 @@ class _OffinsiiveState extends State<Offinsiive> {
     }
   }
 
-  Container buildOffinsiveContainer(
-      BuildContext context, List<OffensiveData> topicDataList) {
+  Container buildOffinsiveContainer(BuildContext context) {
     return Container(
       width: double.infinity,
-      height: MediaQuery.of(context).size.height / 2,
+      height: MediaQuery.of(context).size.height / 2 - 68,
       margin: EdgeInsets.all(8.0),
       child: Card(
         elevation: 5,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.0),
         ),
-        color: Color.fromARGB(255, 238, 236, 236),
+        color: Color.fromARGB(255, 251, 251, 251),
         child: Column(
           children: <Widget>[
             Container(
@@ -548,7 +791,7 @@ class _OffinsiiveState extends State<Offinsiive> {
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Text(
-                  'Offinsive summary',
+                  'Offinsive Summary',
                   style: TextStyle(
                     fontSize: 24,
                     color: Color.fromARGB(255, 255, 255, 255),
@@ -558,13 +801,34 @@ class _OffinsiiveState extends State<Offinsiive> {
               ),
             ),
             SizedBox(height: 20),
-            Container(
-              height: MediaQuery.of(context).size.height / 3,
-              width: MediaQuery.of(context).size.height / 1.2,
+            Expanded(child: buildSummaryForLoading(context)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Container buildSummaryForLoading(BuildContext context) {
+    return Container(
+      child: FutureBuilder<List<OffensiveData>>(
+        future: recentHate(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Center(child: Text('No data available'));
+          } else {
+            final cachedRecentPornographyData = snapshot.data!;
+            return Container(
+              constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).width / 5,
+                  minHeight: MediaQuery.sizeOf(context).width / 5),
               child: SfCircularChart(
                 series: <CircularSeries>[
                   PieSeries<OffensiveData, String>(
-                    dataSource: topicDataList,
+                    dataSource: cachedRecentPornographyData,
                     xValueMapper: (OffensiveData data, _) => data.offensive,
                     yValueMapper: (OffensiveData data, _) => data.count,
                     dataLabelMapper: (OffensiveData data, _) =>
@@ -579,9 +843,9 @@ class _OffinsiiveState extends State<Offinsiive> {
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
+            );
+          }
+        },
       ),
     );
   }
@@ -646,24 +910,7 @@ class _OffinsiiveState extends State<Offinsiive> {
             ),
             SizedBox(height: 20),
             Container(
-              width: MediaQuery.of(context).size.width / 1,
-              height: MediaQuery.of(context).size.height / 2,
-              child: FutureBuilder<List<OffensiveData>>(
-                future: recentHate(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return CircularProgressIndicator();
-                  } else if (snapshot.hasError) {
-                    return Text('Error: ${snapshot.error}');
-                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return Text('No data available');
-                  } else {
-                    final cachedRecentHateSpeechData = snapshot.data!;
-                    return buildOffinsiveContainer(
-                        context, cachedRecentHateSpeechData);
-                  }
-                },
-              ),
+              child: buildOffinsiveContainer(context),
             )
           ],
         ),
@@ -1055,21 +1302,7 @@ class _RegionState extends State<Region> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            FutureBuilder<List<CountryData>>(
-              future: getData(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return CircularProgressIndicator();
-                } else if (snapshot.hasError) {
-                  return Text('Error: ${snapshot.error}');
-                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Text('No data available');
-                } else {
-                  final countryDataList = snapshot.data!;
-                  return buildCountryDataContainer(context, countryDataList);
-                }
-              },
-            ),
+            buildCountryDataContainer(context),
             SizedBox(height: 20),
             buildTopRegionContainer(context),
           ],
@@ -1078,18 +1311,17 @@ class _RegionState extends State<Region> {
     );
   }
 
-  Container buildCountryDataContainer(
-      BuildContext context, List<CountryData> countryDataList) {
+  Container buildCountryDataContainer(BuildContext context) {
     return Container(
       width: double.infinity,
-      height: MediaQuery.of(context).size.height / 2,
+      height: MediaQuery.of(context).size.height / 2 - 68,
       margin: EdgeInsets.all(8.0),
       child: Card(
         elevation: 5,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.0),
         ),
-        color: Colors.grey[200],
+        color: Color.fromARGB(255, 255, 255, 255),
         child: Column(
           children: <Widget>[
             Container(
@@ -1117,7 +1349,27 @@ class _RegionState extends State<Region> {
               ),
             ),
             SizedBox(height: 10),
-            Expanded(
+            Expanded(child: BarForLoading(context)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Container BarForLoading(BuildContext context) {
+    return Container(
+      child: FutureBuilder<List<CountryData>>(
+        future: getData(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return CircularProgressIndicator();
+          } else if (snapshot.hasError) {
+            return Text('Error: ${snapshot.error}');
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Text('No data available');
+          } else {
+            final countryDataList = snapshot.data!;
+            return Container(
               child: SfCartesianChart(
                 primaryXAxis: CategoryAxis(),
                 primaryYAxis: NumericAxis(),
@@ -1133,9 +1385,9 @@ class _RegionState extends State<Region> {
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
+            );
+          }
+        },
       ),
     );
   }
@@ -1406,70 +1658,44 @@ class _DashDeskState extends State<DashDesk> {
     return Color.fromARGB(255, r, g, b);
   }
 
-  Container buildTopicsClassificationContainer(
-      BuildContext context, List<TopicData> topicDataList) {
+  Container buildTopicsClassificationContainer(BuildContext context) {
     return Container(
-      width: double.infinity,
-      height: MediaQuery.of(context).size.height / 2 - 68,
-      margin: EdgeInsets.all(8.0),
-      child: Card(
-        elevation: 5,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.0),
-        ),
-        color: Color.fromARGB(255, 238, 236, 236),
-        child: Column(
-          children: <Widget>[
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue, Colors.green],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(16.0),
-                  topRight: Radius.circular(16.0),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  'Topics Classification',
-                  style: TextStyle(
-                    fontSize: 24,
-                    color: Color.fromARGB(255, 255, 255, 255),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
-            Expanded(
-              child: Container(
-                constraints: BoxConstraints(maxHeight: 300, minHeight: 200),
-                child: SfCircularChart(
-                  series: <CircularSeries>[
-                    PieSeries<TopicData, String>(
-                      dataSource: topicDataList,
-                      xValueMapper: (TopicData data, _) => data.topic,
-                      yValueMapper: (TopicData data, _) => data.count,
-                      dataLabelMapper: (TopicData data, _) =>
-                          '${data.topic}\n${data.count}',
-                      dataLabelSettings: DataLabelSettings(
-                        isVisible: true,
-                        labelPosition: ChartDataLabelPosition.outside,
-                      ),
-                      enableTooltip: true,
-                      explode: true,
-                      explodeIndex: touchedIndex,
+      child: FutureBuilder<List<TopicData>>(
+        future: getData(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Center(child: Text('No data available'));
+          } else {
+            final topicDataList = snapshot.data!;
+            return Container(
+              constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).width / 5,
+                  minHeight: MediaQuery.sizeOf(context).width / 5),
+              child: SfCircularChart(
+                series: <CircularSeries>[
+                  PieSeries<TopicData, String>(
+                    dataSource: topicDataList,
+                    xValueMapper: (TopicData data, _) => data.topic,
+                    yValueMapper: (TopicData data, _) => data.count,
+                    dataLabelMapper: (TopicData data, _) =>
+                        '${data.topic}\n${data.count}',
+                    dataLabelSettings: DataLabelSettings(
+                      isVisible: true,
+                      labelPosition: ChartDataLabelPosition.outside,
                     ),
-                  ],
-                ),
+                    enableTooltip: true,
+                    explode: true,
+                    explodeIndex: touchedIndex,
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
+            );
+          }
+        },
       ),
     );
   }
@@ -1717,8 +1943,43 @@ class _DashDeskState extends State<DashDesk> {
     }
   }
 
-  Container buildCountryDataContainer(
-      BuildContext context, List<CountryData> countryDataList) {
+  Container buildCountryDataContainer(BuildContext context) {
+    Container BarForLoading(BuildContext context) {
+      return Container(
+        child: FutureBuilder<List<CountryData>>(
+          future: getDataglobalDistribution(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return CircularProgressIndicator();
+            } else if (snapshot.hasError) {
+              return Text('Error: ${snapshot.error}');
+            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return Text('No data available');
+            } else {
+              final countryDataList = snapshot.data!;
+              return Container(
+                child: SfCartesianChart(
+                  primaryXAxis: CategoryAxis(),
+                  primaryYAxis: NumericAxis(),
+                  series: <ChartSeries<CountryData, String>>[
+                    BarSeries<CountryData, String>(
+                      dataSource: countryDataList,
+                      xValueMapper: (CountryData data, _) => data.country,
+                      yValueMapper: (CountryData data, _) => data.count,
+                      dataLabelSettings: DataLabelSettings(
+                        isVisible: true,
+                        labelAlignment: ChartDataLabelAlignment.top,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+          },
+        ),
+      );
+    }
+
     return Container(
       width: double.infinity,
       height: MediaQuery.of(context).size.height / 2 - 68,
@@ -1728,7 +1989,7 @@ class _DashDeskState extends State<DashDesk> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.0),
         ),
-        color: Colors.grey[200],
+        color: Color.fromARGB(255, 255, 255, 255),
         child: Column(
           children: <Widget>[
             Container(
@@ -1756,23 +2017,7 @@ class _DashDeskState extends State<DashDesk> {
               ),
             ),
             SizedBox(height: 10),
-            Expanded(
-              child: SfCartesianChart(
-                primaryXAxis: CategoryAxis(),
-                primaryYAxis: NumericAxis(),
-                series: <ChartSeries<CountryData, String>>[
-                  BarSeries<CountryData, String>(
-                    dataSource: countryDataList,
-                    xValueMapper: (CountryData data, _) => data.country,
-                    yValueMapper: (CountryData data, _) => data.count,
-                    dataLabelSettings: DataLabelSettings(
-                      isVisible: true,
-                      labelAlignment: ChartDataLabelAlignment.top,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            Expanded(child: BarForLoading(context)),
           ],
         ),
       ),
@@ -1864,8 +2109,7 @@ class _DashDeskState extends State<DashDesk> {
     );
   }
 
-  Container buildOffinsiveContainer(
-      BuildContext context, List<OffensiveData> topicDataList) {
+  Container buildOffinsiveContainer(BuildContext context) {
     return Container(
       width: double.infinity,
       height: MediaQuery.of(context).size.height / 2 - 68,
@@ -1875,7 +2119,7 @@ class _DashDeskState extends State<DashDesk> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.0),
         ),
-        color: Color.fromARGB(255, 238, 236, 236),
+        color: Color.fromARGB(255, 251, 251, 251),
         child: Column(
           children: <Widget>[
             Container(
@@ -1893,7 +2137,7 @@ class _DashDeskState extends State<DashDesk> {
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Text(
-                  'Offinsive summary',
+                  'Offinsive Summary',
                   style: TextStyle(
                     fontSize: 24,
                     color: Color.fromARGB(255, 255, 255, 255),
@@ -1903,28 +2147,95 @@ class _DashDeskState extends State<DashDesk> {
               ),
             ),
             SizedBox(height: 20),
-            Expanded(
-              child: Container(
-                constraints: BoxConstraints(maxHeight: 300, minHeight: 200),
-                child: SfCircularChart(
-                  series: <CircularSeries>[
-                    PieSeries<OffensiveData, String>(
-                      dataSource: topicDataList,
-                      xValueMapper: (OffensiveData data, _) => data.offensive,
-                      yValueMapper: (OffensiveData data, _) => data.count,
-                      dataLabelMapper: (OffensiveData data, _) =>
-                          '${data.offensive}\n${data.count}',
-                      dataLabelSettings: DataLabelSettings(
-                        isVisible: true,
-                        labelPosition: ChartDataLabelPosition.outside,
-                      ),
-                      enableTooltip: true,
-                      explode: true,
-                      explodeIndex: touchedIndex,
+            Expanded(child: buildSummaryForLoading(context)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Container buildSummaryForLoading(BuildContext context) {
+    return Container(
+      child: FutureBuilder<List<OffensiveData>>(
+        future: recentHate(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Center(child: Text('No data available'));
+          } else {
+            final cachedRecentPornographyData = snapshot.data!;
+            return Container(
+              constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).width / 5,
+                  minHeight: MediaQuery.sizeOf(context).width / 5),
+              child: SfCircularChart(
+                series: <CircularSeries>[
+                  PieSeries<OffensiveData, String>(
+                    dataSource: cachedRecentPornographyData,
+                    xValueMapper: (OffensiveData data, _) => data.offensive,
+                    yValueMapper: (OffensiveData data, _) => data.count,
+                    dataLabelMapper: (OffensiveData data, _) =>
+                        '${data.offensive}\n${data.count}',
+                    dataLabelSettings: DataLabelSettings(
+                      isVisible: true,
+                      labelPosition: ChartDataLabelPosition.outside,
                     ),
-                  ],
+                    enableTooltip: true,
+                    explode: true,
+                    explodeIndex: touchedIndex,
+                  ),
+                ],
+              ),
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  Container buildTopicsContainerForLoad(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: MediaQuery.of(context).size.height / 2 - 68,
+      margin: EdgeInsets.all(8.0),
+      child: Card(
+        elevation: 5,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.0),
+        ),
+        color: Colors.white,
+        child: Column(
+          children: <Widget>[
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue, Colors.green],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(16.0),
+                  topRight: Radius.circular(16.0),
                 ),
               ),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Text(
+                  'Topics Classifications',
+                  style: TextStyle(
+                    fontSize: 24,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 10),
+            Expanded(
+              child: buildTopicsClassificationContainer(context),
             ),
           ],
         ),
@@ -1935,21 +2246,187 @@ class _DashDeskState extends State<DashDesk> {
   @override
   Widget build(BuildContext context) {
     final arguments = ModalRoute.of(context)?.settings.arguments;
+    TextEditingController textEditingController = TextEditingController();
+    String data;
+
     if (arguments != null) {
       token = arguments as String;
+    }
+
+    Future<String> getIsAbusive(String message) async {
+      ipAddress = await getIpAddress();
+
+      final userData = {
+        "message": message,
+      };
+
+      final jsonData = jsonEncode(userData);
+
+      var url;
+      if (kIsWeb) {
+        url = Uri.parse('http://127.0.0.1:9096/model/abusive');
+      } else if (Platform.isAndroid) {
+        url = Uri.parse('http://10.0.2.2:9096/model/abusive');
+      } else if (Platform.isIOS) {
+        url = Uri.parse('http://localhost:9096/model/abusive');
+      } else {
+        url = Uri.parse('http://127.0.0.1:9096/model/abusive');
+      }
+
+      response = await http.post(
+        url,
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json; charset=UTF-8",
+          "token": '$token',
+          "X-Forwarded-For": ipAddress,
+        },
+        body: jsonData,
+      );
+
+      if (response.statusCode == 401) {
+        Navigator.of(context).pushReplacementNamed("Login");
+        return "";
+      } else if (response.statusCode == 200) {
+        data = response.body;
+        return data;
+      } else {
+        throw Exception(response.body);
+      }
+    }
+
+    Future<String> getIsTopic(String message) async {
+      ipAddress = await getIpAddress();
+
+      var url;
+      if (kIsWeb) {
+        url = Uri.parse('http://127.0.0.1:9096/model/topic');
+      } else if (Platform.isAndroid) {
+        url = Uri.parse('http://10.0.2.2:9096/model/topic');
+      } else if (Platform.isIOS) {
+        url = Uri.parse('http://localhost:9096/model/topic');
+      } else {
+        url = Uri.parse('http://127.0.0.1:9096/model/topic');
+      }
+
+      response = await http.post(
+        url,
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "token": '$token',
+          "X-Forwarded-For": ipAddress,
+        },
+        body: jsonEncode({'message': message}),
+      );
+
+      if (response.statusCode == 401) {
+        Navigator.of(context).pushReplacementNamed("Login");
+        return "";
+      } else if (response.statusCode == 200) {
+        data = response.body;
+        return data;
+      } else {
+        throw Exception(response.body);
+      }
     }
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 54, 165, 255),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text("Tweet Scope"),
-            SizedBox(width: 16),
-            Image(image: AssetImage("images/twitter.png"), height: 30),
-          ],
-        ),
+        title: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Image(image: AssetImage("images/twitter.png"), height: 30),
+          SizedBox(width: 16),
+          Text("Tweet Scope"),
+          SizedBox(width: 16),
+          Flexible(
+            child: TextField(
+              controller: textEditingController,
+              decoration: InputDecoration(
+                contentPadding: EdgeInsets.symmetric(vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15.0),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                hintText: 'Test...',
+              ),
+              style: TextStyle(fontSize: 14),
+            ),
+          ),
+          SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () async {
+              String message = textEditingController.text;
+              String result = await getIsAbusive(message);
+              AwesomeDialog(
+                context: context,
+                dialogType: DialogType.SUCCES,
+                animType: AnimType.BOTTOMSLIDE,
+                title: result,
+                desc: "Topics model classified this as : " + result,
+                btnOkOnPress: () {},
+              )..show();
+            },
+            child: Text(
+              "Check if Abusive",
+              style: TextStyle(color: Colors.white),
+            ),
+            style: ElevatedButton.styleFrom(
+              primary: Colors.blue,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+          ),
+          SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () async {
+              String message = textEditingController.text;
+              String result = await getIsTopic(message);
+              AwesomeDialog(
+                context: context,
+                dialogType: DialogType.SUCCES,
+                animType: AnimType.BOTTOMSLIDE,
+                title: result,
+                desc: "Abusive model classified this as : " + result,
+                btnOkOnPress: () {},
+              )..show();
+            },
+            child: Text(
+              "Check the Topic",
+              style: TextStyle(color: Colors.white),
+            ),
+            style: ElevatedButton.styleFrom(
+              primary: Colors.blue,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+          ),
+          SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pushReplacement(MaterialPageRoute(
+                builder: (context) => Login(),
+              ));
+            },
+            child: Text(
+              "Sign Out",
+              style: TextStyle(color: Colors.white),
+            ),
+            style: ElevatedButton.styleFrom(
+              primary: Colors.blue,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+          ),
+        ]),
       ),
       body: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -1961,22 +2438,7 @@ class _DashDeskState extends State<DashDesk> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  FutureBuilder<List<TopicData>>(
-                    future: getData(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return CircularProgressIndicator();
-                      } else if (snapshot.hasError) {
-                        return Text('Error: ${snapshot.error}');
-                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                        return Text('No data available');
-                      } else {
-                        final topicDataList = snapshot.data!;
-                        return buildTopicsClassificationContainer(
-                            context, topicDataList);
-                      }
-                    },
-                  ),
+                  buildTopicsContainerForLoad(context),
                   SizedBox(height: 20),
                   buildRecentTopicsContainer(context),
                 ],
@@ -2035,29 +2497,7 @@ class _DashDeskState extends State<DashDesk> {
                     ),
                   ),
                   SizedBox(height: 20),
-                  Container(
-                    width: double.infinity,
-                    height: MediaQuery.of(context).size.height / 2 - 68,
-                    margin: EdgeInsets.all(8.0),
-                    child: FutureBuilder<List<OffensiveData>>(
-                      future: recentHate(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return CircularProgressIndicator();
-                        } else if (snapshot.hasError) {
-                          return Text('Error: ${snapshot.error}');
-                        } else if (!snapshot.hasData ||
-                            snapshot.data!.isEmpty) {
-                          return Text('No data available');
-                        } else {
-                          final cachedRecentHateSpeechData = snapshot.data!;
-                          return buildOffinsiveContainer(
-                              context, cachedRecentHateSpeechData);
-                        }
-                      },
-                    ),
-                  )
+                  Container(child: buildOffinsiveContainer(context))
                 ],
               )),
           Expanded(
@@ -2065,22 +2505,7 @@ class _DashDeskState extends State<DashDesk> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                FutureBuilder<List<CountryData>>(
-                  future: getDataglobalDistribution(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return CircularProgressIndicator();
-                    } else if (snapshot.hasError) {
-                      return Text('Error: ${snapshot.error}');
-                    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return Text('No data available');
-                    } else {
-                      final countryDataList = snapshot.data!;
-                      return buildCountryDataContainer(
-                          context, countryDataList);
-                    }
-                  },
-                ),
+                buildCountryDataContainer(context),
                 SizedBox(height: 20),
                 buildTopRegionContainer(context),
               ],
