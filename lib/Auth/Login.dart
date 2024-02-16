@@ -106,12 +106,12 @@ class _LoginState extends State<Login> {
     } else {
       return AwesomeDialog(
         context: context,
-        dialogType: DialogType.info,
+        dialogType: DialogType.error,
         animType: AnimType.rightSlide,
         title: 'Error while login',
         desc: 'Username or Password wrong',
-        btnCancelOnPress: () {},
         btnOkOnPress: () {},
+        btnOkColor: Colors.red,
       )..show();
     }
   }

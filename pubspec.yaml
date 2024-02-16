@@ -42,6 +42,7 @@ dependencies:
   circular_chart_flutter: ^0.0.2
   fl_chart: ^0.64.0
   syncfusion_flutter_charts: ^23.1.43
+  flutter_charts: ^0.5.2
 
 dev_dependencies:
   flutter_native_splash: ^2.3.2

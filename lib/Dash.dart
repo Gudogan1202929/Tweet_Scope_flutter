@@ -13,6 +13,8 @@ import 'package:tweet_scope/models/ChartModel.dart';
 import 'package:tweet_scope/models/CountryData.dart';
 import 'package:tweet_scope/models/OffensiveData.dart';
 import 'package:tweet_scope/models/TopicData.dart';
+import 'package:flutter_charts/flutter_charts.dart';
+import 'package:flutter/material.dart';
 
 class ListUser extends StatefulWidget {
   ListUser({super.key});
@@ -70,7 +72,7 @@ class _ListUserState extends State<ListUser> {
               backgroundColor: Colors.blue,
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.map),
+              icon: Icon(Icons.add_task_sharp),
               label: "Test Models",
               backgroundColor: Colors.blue,
             ),
@@ -109,24 +111,19 @@ class _TestModelState extends State<TestModel> {
     print(token);
     ipAddress = await getIpAddress();
 
-    final userData = {
-      "message": message,
-    };
+    String basePath = kIsWeb
+        ? 'http://127.0.0.1:9096'
+        : Platform.isAndroid
+            ? 'http://10.0.2.2:9096'
+            : Platform.isIOS
+                ? 'http://localhost:9096'
+                : 'http://127.0.0.1:9096';
+    String path = '/classify/hate';
 
-    final jsonData = jsonEncode(userData);
+    var url =
+        Uri.parse('$basePath$path').replace(queryParameters: {'text': message});
 
-    var url;
-    if (kIsWeb) {
-      url = Uri.parse('http://127.0.0.1:9096/model/abusive');
-    } else if (Platform.isAndroid) {
-      url = Uri.parse('http://10.0.2.2:9096/model/abusive');
-    } else if (Platform.isIOS) {
-      url = Uri.parse('http://localhost:9096/model/abusive');
-    } else {
-      url = Uri.parse('http://127.0.0.1:9096/model/abusive');
-    }
-
-    response = await http.post(
+    response = await http.get(
       url,
       headers: {
         "Accept": "application/json",
@@ -134,7 +131,6 @@ class _TestModelState extends State<TestModel> {
         "token": '$token',
         "X-Forwarded-For": ipAddress,
       },
-      body: jsonData,
     );
 
     if (response.statusCode == 401) {
@@ -151,18 +147,19 @@ class _TestModelState extends State<TestModel> {
   Future<String> getIsTopic(String message) async {
     ipAddress = await getIpAddress();
 
-    var url;
-    if (kIsWeb) {
-      url = Uri.parse('http://127.0.0.1:9096/model/topic');
-    } else if (Platform.isAndroid) {
-      url = Uri.parse('http://10.0.2.2:9096/model/topic');
-    } else if (Platform.isIOS) {
-      url = Uri.parse('http://localhost:9096/model/topic');
-    } else {
-      url = Uri.parse('http://127.0.0.1:9096/model/topic');
-    }
+    String basePath = kIsWeb
+        ? 'http://127.0.0.1:9096'
+        : Platform.isAndroid
+            ? 'http://10.0.2.2:9096'
+            : Platform.isIOS
+                ? 'http://localhost:9096'
+                : 'http://127.0.0.1:9096';
+    String path = '/classify/topic';
 
-    response = await http.post(
+    var url =
+        Uri.parse('$basePath$path').replace(queryParameters: {'text': message});
+
+    response = await http.get(
       url,
       headers: {
         "Accept": "application/json",
@@ -170,7 +167,6 @@ class _TestModelState extends State<TestModel> {
         "token": '$token',
         "X-Forwarded-For": ipAddress,
       },
-      body: jsonEncode({'message': message}),
     );
 
     if (response.statusCode == 401) {
@@ -211,15 +207,28 @@ class _TestModelState extends State<TestModel> {
   }
 
   void showMyDialog(BuildContext context, String content) {
+    print(content);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      AwesomeDialog(
-        context: context,
-        dialogType: DialogType.SUCCES,
-        animType: AnimType.BOTTOMSLIDE,
-        title: content,
-        desc: 'Our model classified this as: $content',
-        btnOkOnPress: () {},
-      )..show();
+      if (content == '"HateSpeech"' || content == '"Offensive"') {
+        AwesomeDialog(
+          context: context,
+          dialogType: DialogType.error,
+          animType: AnimType.BOTTOMSLIDE,
+          title: content,
+          desc: 'Our model classified this as: $content',
+          btnOkOnPress: () {},
+          btnOkColor: Colors.red,
+        )..show();
+      } else {
+        AwesomeDialog(
+          context: context,
+          dialogType: DialogType.success,
+          animType: AnimType.BOTTOMSLIDE,
+          title: content,
+          desc: 'Our model classified this as: $content',
+          btnOkOnPress: () {},
+        )..show();
+      }
     });
   }
 
@@ -274,7 +283,7 @@ class _TestModelState extends State<TestModel> {
                   showMyDialog(context, result);
                 },
                 child: Text(
-                  "Check if Abusive",
+                  "Check if Offinsive",
                   style: TextStyle(color: Colors.white),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -333,25 +342,16 @@ class _DashboardState extends State<Dashboard> {
   Future<List<TopicData>> getData() async {
     ipAddress = await getIpAddress();
 
-    var url;
+    String basePath = kIsWeb
+        ? 'http://127.0.0.1:9096'
+        : Platform.isAndroid
+            ? 'http://10.0.2.2:9096'
+            : Platform.isIOS
+                ? 'http://localhost:9096'
+                : 'http://127.0.0.1:9096';
+    String path = '/dataSummaries/topicClassification';
 
-    if (kIsWeb) {
-      // Code specific to web or Chrome
-      print("Chrome or web");
-      url = Uri.parse('http://127.0.0.1:9096/tweet/topic/classifications');
-    } else if (Platform.isAndroid) {
-      // Android-specific code
-      print("Android");
-      url = Uri.parse('http://10.0.2.2:9096/tweet/topic/classifications');
-    } else if (Platform.isIOS) {
-      // iOS-specific code
-      print("iOS");
-      url = Uri.parse('http://localhost:9096/tweet/topic/classifications');
-    } else {
-      // Fallback for other platforms
-      print("Other");
-      url = Uri.parse('http://127.0.0.1:9096/tweet/topic/classifications');
-    }
+    var url = Uri.parse('$basePath$path');
 
     response = await http.get(
       url,
@@ -366,10 +366,11 @@ class _DashboardState extends State<Dashboard> {
       Navigator.of(context).pushReplacementNamed("Login");
       return [];
     } else if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
+      final data = json.decode(response.body) as List<dynamic>;
 
-      final List<TopicData> topicDataList = (data as List)
-          .map((json) => TopicData.fromJson(json as List<dynamic>))
+      final List<TopicData> topicDataList = data
+          .map((jsonItem) =>
+              TopicData.fromJson(jsonItem as Map<String, dynamic>))
           .toList();
 
       return topicDataList;
@@ -378,28 +379,19 @@ class _DashboardState extends State<Dashboard> {
     }
   }
 
-  Future<List<TopicData>> getRecentTopic() async {
+  Future<int> getRecentTopic() async {
     ipAddress = await getIpAddress();
 
-    var url;
+    String basePath = kIsWeb
+        ? 'http://127.0.0.1:9096'
+        : Platform.isAndroid
+            ? 'http://10.0.2.2:9096'
+            : Platform.isIOS
+                ? 'http://localhost:9096'
+                : 'http://127.0.0.1:9096';
+    String path = '/dataSummaries/numOfTweets';
 
-    if (kIsWeb) {
-      // Code specific to web or Chrome
-      print("Chrome or web");
-      url = Uri.parse('http://127.0.0.1:9096/tweet/recent/topic');
-    } else if (Platform.isAndroid) {
-      // Android-specific code
-      print("Android");
-      url = Uri.parse('http://10.0.2.2:9096/tweet/recent/topic');
-    } else if (Platform.isIOS) {
-      // iOS-specific code
-      print("iOS");
-      url = Uri.parse('http://localhost:9096/tweet/recent/topic');
-    } else {
-      // Fallback for other platforms
-      print("Other");
-      url = Uri.parse('http://127.0.0.1:9096/tweet/recent/topic');
-    }
+    var url = Uri.parse('$basePath$path');
 
     response = await http.get(
       url,
@@ -412,15 +404,10 @@ class _DashboardState extends State<Dashboard> {
 
     if (response.statusCode == 401) {
       Navigator.of(context).pushReplacementNamed("Login");
-      return [];
+      return 0;
     } else if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-
-      final List<TopicData> topicDataList = (data as List)
-          .map((json) => TopicData.fromJson(json as List<dynamic>))
-          .toList();
-
-      return topicDataList;
+      final int data = json.decode(response.body);
+      return data;
     } else {
       throw Exception(response.body);
     }
@@ -464,8 +451,8 @@ class _DashboardState extends State<Dashboard> {
 
         return PieChartSectionData(
           color: getRandomColor(),
-          value: topicData.count.toDouble(),
-          title: '${topicData.topic}\n${topicData.count}',
+          value: topicData.hashCode.toDouble(),
+          title: '${topicData.topic}\n${topicData.hashCode}',
           radius: radius,
           titleStyle: TextStyle(
             fontSize: fontSize,
@@ -574,9 +561,9 @@ class _DashboardState extends State<Dashboard> {
                   PieSeries<TopicData, String>(
                     dataSource: topicDataList,
                     xValueMapper: (TopicData data, _) => data.topic,
-                    yValueMapper: (TopicData data, _) => data.count,
+                    yValueMapper: (TopicData data, _) => data.totalTweets,
                     dataLabelMapper: (TopicData data, _) =>
-                        '${data.topic}\n${data.count}',
+                        '${data.topic}\n${data.totalTweets}',
                     dataLabelSettings: DataLabelSettings(
                       isVisible: true,
                       labelPosition: ChartDataLabelPosition.outside,
@@ -622,7 +609,7 @@ class _DashboardState extends State<Dashboard> {
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Text(
-                  'Recent Topics',
+                  'Tweets Classified',
                   style: TextStyle(
                     fontSize: 24,
                     color: Colors.white,
@@ -642,34 +629,30 @@ class _DashboardState extends State<Dashboard> {
   }
 
   Widget buildRecentTopicsList() {
-    return FutureBuilder<List<TopicData>>(
+    return FutureBuilder<int>(
       future: getRecentTopic(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(child: CircularProgressIndicator());
         } else if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
-        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+        } else if (!snapshot.hasData) {
+          // Corrected condition
           return Center(child: Text('No data available'));
         } else {
-          final topicDataList = snapshot.data!;
-          return ListView.builder(
-            itemCount: topicDataList.length,
-            itemBuilder: (context, index) {
-              final data = topicDataList[index];
-              return ListTile(
-                title: Center(
-                  child: Text(
-                    '${data.topic}: ${data.count}',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blueGrey,
-                    ),
-                  ),
-                ),
-              );
-            },
+          final int topicDataCount = snapshot.data!;
+          // Correct way to convert double to String for display
+          return Center(
+            child: Text(
+              'Classified Tweets\nSo Far\n${topicDataCount.toString()}',
+              textAlign: TextAlign
+                  .center, // Ensure the text is centered if it wraps to a new line.
+              style: TextStyle(
+                fontSize: 23, // Increased font size for larger text
+                fontWeight: FontWeight.bold,
+                color: Colors.black54,
+              ),
+            ),
           );
         }
       },
@@ -693,24 +676,17 @@ class _OffinsiiveState extends State<Offinsiive> {
 
   Future<List<OffensiveData>> recentHate() async {
     ipAddress = await getIpAddress();
-    var url;
-    if (kIsWeb) {
-      // Code specific to web or Chrome
-      print("Chrome or web");
-      url = Uri.parse('http://127.0.0.1:9096/tweet/summary/offensive');
-    } else if (Platform.isAndroid) {
-      // Android-specific code
-      print("Android");
-      url = Uri.parse('http://10.0.2.2:9096/tweet/summary/offensive');
-    } else if (Platform.isIOS) {
-      // iOS-specific code
-      print("iOS");
-      url = Uri.parse('http://localhost:9096/tweet/summary/offensive');
-    } else {
-      // Fallback for other platforms
-      print("Other");
-      url = Uri.parse('http://127.0.0.1:9096/tweet/summary/offensive');
-    }
+
+    String basePath = kIsWeb
+        ? 'http://127.0.0.1:9096'
+        : Platform.isAndroid
+            ? 'http://10.0.2.2:9096'
+            : Platform.isIOS
+                ? 'http://localhost:9096'
+                : 'http://127.0.0.1:9096';
+    String path = '/dataSummaries/offensiveSummary';
+
+    var url = Uri.parse('$basePath$path');
 
     response = await http.get(
       url,
@@ -727,11 +703,12 @@ class _OffinsiiveState extends State<Offinsiive> {
     } else if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
 
-      final List<OffensiveData> topRegion = (data as List)
-          .map((json) => OffensiveData.fromJson(json as List<dynamic>))
+      final List<OffensiveData> offensiveDataList = data
+          .map((jsonItem) =>
+              OffensiveData.fromJson(jsonItem as Map<String, dynamic>))
           .toList();
 
-      return topRegion;
+      return offensiveDataList;
     } else {
       throw Exception(response.body);
     }
@@ -829,10 +806,10 @@ class _OffinsiiveState extends State<Offinsiive> {
                 series: <CircularSeries>[
                   PieSeries<OffensiveData, String>(
                     dataSource: cachedRecentPornographyData,
-                    xValueMapper: (OffensiveData data, _) => data.offensive,
-                    yValueMapper: (OffensiveData data, _) => data.count,
+                    xValueMapper: (OffensiveData data, _) => data.topic,
+                    yValueMapper: (OffensiveData data, _) => data.totalTweets,
                     dataLabelMapper: (OffensiveData data, _) =>
-                        '${data.offensive}\n${data.count}',
+                        '${data.topic}\n${data.totalTweets}',
                     dataLabelSettings: DataLabelSettings(
                       isVisible: true,
                       labelPosition: ChartDataLabelPosition.outside,
@@ -927,13 +904,14 @@ class TweetCategoryChart extends StatefulWidget {
 }
 
 class _TweetCategoryChartState extends State<TweetCategoryChart> {
-  List<TweetModel> data = [];
+  List<TweetSummary> data = [];
   var response = http.Response('', 200);
   String? token;
   String result = "";
   String ipAddress = 'IP address not found';
   final Map<String, Map<String, int>> monthlyData = {};
-  List<TweetModel>? cachedTweetData;
+  List<TweetSummary>? cachedTweetData;
+  late TooltipBehavior _tooltip;
 
   Future<String> getIpAddress() async {
     if (kIsWeb) {
@@ -961,33 +939,21 @@ class _TweetCategoryChartState extends State<TweetCategoryChart> {
     }
   }
 
-  Future<List<TweetModel>> getData() async {
-    if (cachedTweetData != null) {
-      // Return the cached tweet data if it exists
-      return cachedTweetData!;
-    }
-
+  Future<List<TweetSummary>> getData() async {
     ipAddress = await getIpAddress();
-    var url;
 
-    if (kIsWeb) {
-      // Code specific to web or Chrome
-      print("Chrome or web");
-      url = Uri.parse('http://127.0.0.1:9096/tweet/offensive/chart');
-    } else if (Platform.isAndroid) {
-      // Android-specific code
-      print("Android");
-      url = Uri.parse('http://10.0.2.2:9096/tweet/offensive/chart');
-    } else if (Platform.isIOS) {
-      // iOS-specific code
-      print("iOS");
-      url = Uri.parse('http://localhost:9096/tweet/offensive/chart');
-    } else {
-      // Fallback for other platforms
-      print("Other");
-      url = Uri.parse('http://127.0.0.1:9096/tweet/offensive/chart');
-    }
-    response = await http.get(
+    String basePath = kIsWeb
+        ? 'http://127.0.0.1:9096'
+        : Platform.isAndroid
+            ? 'http://10.0.2.2:9096'
+            : Platform.isIOS
+                ? 'http://localhost:9096'
+                : 'http://127.0.0.1:9096';
+    String path = '/dataSummaries/offensiveChart';
+
+    var url = Uri.parse('$basePath$path');
+
+    var response = await http.get(
       url,
       headers: {
         "Accept": "application/json",
@@ -998,24 +964,80 @@ class _TweetCategoryChartState extends State<TweetCategoryChart> {
 
     if (response.statusCode == 401) {
       Navigator.of(context).pushReplacementNamed("Login");
-      return <TweetModel>[];
+      return <TweetSummary>[];
     } else if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
 
-      final List<TweetModel> topicDataList = (data as List)
-          .map((json) => TweetModel.fromJson(json as List))
+      final List<TweetSummary> summaries = data
+          .map((jsonItem) =>
+              TweetSummary.fromJson(jsonItem as Map<String, dynamic>))
           .toList();
 
-      cachedTweetData = topicDataList; // Store fetched tweet data in the cache
-      return topicDataList;
+      return summaries;
     } else {
       throw Exception(response.body);
     }
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _tooltip = TooltipBehavior(
+        enable: true); // Initialize the TooltipBehavior in initState
+  }
+
   Future<void> fetchData() async {
     data = await getData();
     print(data.length);
+  }
+
+  Widget createChartWidget(List<ChartData> chartData) {
+    chartData.sort((a, b) => a.monthYear.compareTo(b.monthYear));
+    return SfCartesianChart(
+      primaryXAxis: CategoryAxis(),
+      primaryYAxis: NumericAxis(minimum: 0),
+      series: <ChartSeries>[
+        // Line series for normal tweets
+        // Line series for offensive tweets
+        LineSeries<ChartData, String>(
+          dataSource: chartData,
+          xValueMapper: (ChartData data, _) => data.monthYear,
+          yValueMapper: (ChartData data, _) => data.offensive,
+          name: 'Offensive',
+          color: Colors.red,
+        ),
+        // Line series for hate speech tweets
+        LineSeries<ChartData, String>(
+          dataSource: chartData,
+          xValueMapper: (ChartData data, _) => data.monthYear,
+          yValueMapper: (ChartData data, _) => data.hateSpeech,
+          name: 'Hate Speech',
+          color: Colors.blue,
+        ),
+      ],
+      tooltipBehavior: _tooltip,
+    );
+  }
+
+  Future<List<ChartData>> processData(List<TweetSummary> summaries) async {
+    Map<String, ChartData> aggregatedData = {};
+    for (var tweet in summaries) {
+      DateTime tweetDate = tweet.time;
+      String year = tweetDate.year.toString();
+      String semester = tweetDate.month <= 6 ? "H1" : "H2";
+      String yearSemester = "$year-$semester";
+
+      aggregatedData.putIfAbsent(
+          yearSemester, () => ChartData(yearSemester, 0, 0, 0));
+
+      aggregatedData[yearSemester]!.offensive += tweet.numOffensive;
+      aggregatedData[yearSemester]!.hateSpeech += tweet.numHate;
+    }
+
+    List<ChartData> chartDataList = aggregatedData.values.toList();
+    chartDataList.sort((a, b) => a.monthYear.compareTo(b.monthYear));
+    print(chartDataList);
+    return chartDataList;
   }
 
   @override
@@ -1025,76 +1047,27 @@ class _TweetCategoryChartState extends State<TweetCategoryChart> {
       token = arguments as String;
     }
 
-    return FutureBuilder<void>(
-      future: fetchData(),
+    // Adjust FutureBuilder to work with List<ChartData>
+    return FutureBuilder<List<ChartData>>(
+      // First, fetch the data, and then process it
+      future: getData().then((data) => processData(data)),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return CircularProgressIndicator();
         } else if (snapshot.hasError) {
           return Text('Error: ${snapshot.error}');
-        } else {
-          monthlyData.clear(); // Clear the data map
+        } else if (snapshot.hasData) {
+          final chartData =
+              snapshot.data!; // This is now correctly List<ChartData>
 
-          for (var tweet in data) {
-            final monthYear =
-                '${tweet.timestamp.month}-${tweet.timestamp.year}';
-            if (!monthlyData.containsKey(monthYear)) {
-              monthlyData[monthYear] = {
-                'HateSpeech': 0,
-                'Pornograph': 0,
-                'Abusive': 0,
-              };
-            }
-
-            final offensiveType = tweet.offensiveType ?? 'Unknown';
-            monthlyData[monthYear]?[offensiveType] =
-                (monthlyData[monthYear]?[offensiveType] ?? 0) + 1;
-          }
-
-          final List<ChartData> chartData = [];
-
-          // Create a list of ChartData objects
-          monthlyData.forEach((monthYear, categories) {
-            final hateSpeechCount = categories['HateSpeech'] ?? 0;
-            final pornographyCount = categories['Pornograph'] ?? 0;
-            final abusiveCount = categories['Abusive'] ?? 0;
-            chartData.add(ChartData(
-                monthYear, hateSpeechCount, pornographyCount, abusiveCount));
-          });
-
+          Widget chartWidget =
+              createChartWidget(chartData); // Use processed chart data
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: SfCartesianChart(
-              primaryXAxis: CategoryAxis(),
-              primaryYAxis: NumericAxis(),
-              series: <ChartSeries<ChartData, String>>[
-                LineSeries<ChartData, String>(
-                  color: Colors.blue,
-                  dataSource: chartData,
-                  xValueMapper: (ChartData data, _) => data.monthYear,
-                  yValueMapper: (ChartData data, _) => data.hateSpeechCount,
-                  name: 'HateSpeech',
-                  dataLabelSettings: DataLabelSettings(isVisible: false),
-                ),
-                LineSeries<ChartData, String>(
-                  color: Colors.red,
-                  dataSource: chartData,
-                  xValueMapper: (ChartData data, _) => data.monthYear,
-                  yValueMapper: (ChartData data, _) => data.pornographyCount,
-                  name: 'Pornograph',
-                  dataLabelSettings: DataLabelSettings(isVisible: false),
-                ),
-                LineSeries<ChartData, String>(
-                  color: Colors.green,
-                  dataSource: chartData,
-                  xValueMapper: (ChartData data, _) => data.monthYear,
-                  yValueMapper: (ChartData data, _) => data.abusiveCount,
-                  name: 'Abusive',
-                  dataLabelSettings: DataLabelSettings(isVisible: false),
-                ),
-              ],
-            ),
+            child: chartWidget,
           );
+        } else {
+          return Text('No data available');
         }
       },
     );
@@ -1125,17 +1098,7 @@ class MyLegend extends StatelessWidget {
                 color: Colors.red,
               ),
               SizedBox(width: 8),
-              Text('Pornography', style: TextStyle(color: Colors.black)),
-            ],
-          ),
-          Row(
-            children: [
-              Icon(
-                Icons.circle,
-                color: Colors.green,
-              ),
-              SizedBox(width: 8),
-              Text('Abusive', style: TextStyle(color: Colors.black)),
+              Text('Offinsive', style: TextStyle(color: Colors.black)),
             ],
           ),
         ],
@@ -1145,13 +1108,12 @@ class MyLegend extends StatelessWidget {
 }
 
 class ChartData {
-  final String monthYear;
-  final int hateSpeechCount;
-  final int pornographyCount;
-  final int abusiveCount;
+  String monthYear;
+  int normal;
+  int offensive;
+  int hateSpeech;
 
-  ChartData(this.monthYear, this.hateSpeechCount, this.pornographyCount,
-      this.abusiveCount);
+  ChartData(this.monthYear, this.normal, this.offensive, this.hateSpeech);
 }
 
 class Region extends StatefulWidget {
@@ -1170,25 +1132,16 @@ class _RegionState extends State<Region> {
   Future<List<CountryData>> getData() async {
     ipAddress = await getIpAddress();
 
-    var url;
+    String basePath = kIsWeb
+        ? 'http://127.0.0.1:9096'
+        : Platform.isAndroid
+            ? 'http://10.0.2.2:9096'
+            : Platform.isIOS
+                ? 'http://localhost:9096'
+                : 'http://127.0.0.1:9096';
+    String path = '/dataSummaries/topOffensiveRegions';
 
-    if (kIsWeb) {
-      // Code specific to web or Chrome
-      print("Chrome or web");
-      url = Uri.parse('http://127.0.0.1:9096/tweeter/user/global/distribution');
-    } else if (Platform.isAndroid) {
-      // Android-specific code
-      print("Android");
-      url = Uri.parse('http://10.0.2.2:9096/tweeter/user/global/distribution');
-    } else if (Platform.isIOS) {
-      // iOS-specific code
-      print("iOS");
-      url = Uri.parse('http://localhost:9096/tweeter/user/global/distribution');
-    } else {
-      // Fallback for other platforms
-      print("Other");
-      url = Uri.parse('http://127.0.0.1:9096/tweeter/user/global/distribution');
-    }
+    var url = Uri.parse('$basePath$path');
 
     response = await http.get(
       url,
@@ -1207,7 +1160,7 @@ class _RegionState extends State<Region> {
       _tooltip = TooltipBehavior(enable: true);
 
       final List<CountryData> countryDataList = (data as List)
-          .map((json) => CountryData.fromJson(json as List<dynamic>))
+          .map((json) => CountryData.fromJson(json as Map<String, dynamic>))
           .toList();
 
       return countryDataList;
@@ -1219,25 +1172,16 @@ class _RegionState extends State<Region> {
   Future<List<CountryData>> getTopRegion() async {
     ipAddress = await getIpAddress();
 
-    var url;
+    String basePath = kIsWeb
+        ? 'http://127.0.0.1:9096'
+        : Platform.isAndroid
+            ? 'http://10.0.2.2:9096'
+            : Platform.isIOS
+                ? 'http://localhost:9096'
+                : 'http://127.0.0.1:9096';
+    String path = '/dataSummaries/regionsOffensive';
 
-    if (kIsWeb) {
-      // Code specific to web or Chrome
-      print("Chrome or web");
-      url = Uri.parse('http://127.0.0.1:9096/tweeter/user/top/regions');
-    } else if (Platform.isAndroid) {
-      // Android-specific code
-      print("Android");
-      url = Uri.parse('http://10.0.2.2:9096/tweeter/user/top/regions');
-    } else if (Platform.isIOS) {
-      // iOS-specific code
-      print("iOS");
-      url = Uri.parse('http://localhost:9096/tweeter/user/top/regions');
-    } else {
-      // Fallback for other platforms
-      print("Other");
-      url = Uri.parse('http://127.0.0.1:9096/tweeter/user/top/regions');
-    }
+    var url = Uri.parse('$basePath$path');
 
     response = await http.get(
       url,
@@ -1254,11 +1198,11 @@ class _RegionState extends State<Region> {
     } else if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
 
-      final List<CountryData> topRegion = (data as List)
-          .map((json) => CountryData.fromJson(json as List<dynamic>))
+      final List<CountryData> countryDataList = (data as List)
+          .map((json) => CountryData.fromJson(json as Map<String, dynamic>))
           .toList();
 
-      return topRegion;
+      return countryDataList;
     } else {
       throw Exception(response.body);
     }
@@ -1339,7 +1283,7 @@ class _RegionState extends State<Region> {
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Text(
-                  'Bar Region offensive',
+                  'Top Offensive Region',
                   style: TextStyle(
                     fontSize: 24,
                     color: Colors.white,
@@ -1420,7 +1364,7 @@ class _RegionState extends State<Region> {
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Text(
-                  'Top Regions Offensive',
+                  'Regions Offensive Tweets',
                   style: TextStyle(
                     fontSize: 24,
                     color: Colors.white,
@@ -1499,34 +1443,25 @@ class _DashDeskState extends State<DashDesk> {
   List<CountryData>? cachedGlobalDistributionData;
   List<CountryData>? cachedTopRegions;
   String? cachedRecentAbusive;
+  int? TweetNumber;
 
   Future<List<TopicData>> getData() async {
     if (cachedData != null) {
-      // Return the cached data if it exists
+      // Return the cached top regions data if it exists
       return cachedData!;
     }
-
     ipAddress = await getIpAddress();
 
-    var url;
+    String basePath = kIsWeb
+        ? 'http://127.0.0.1:9096'
+        : Platform.isAndroid
+            ? 'http://10.0.2.2:9096'
+            : Platform.isIOS
+                ? 'http://localhost:9096'
+                : 'http://127.0.0.1:9096';
+    String path = '/dataSummaries/topicClassification';
 
-    if (kIsWeb) {
-      // Code specific to web or Chrome
-      print("Chrome or web");
-      url = Uri.parse('http://127.0.0.1:9096/tweet/topic/classifications');
-    } else if (Platform.isAndroid) {
-      // Android-specific code
-      print("Android");
-      url = Uri.parse('http://10.0.2.2:9096/tweet/topic/classifications');
-    } else if (Platform.isIOS) {
-      // iOS-specific code
-      print("iOS");
-      url = Uri.parse('http://localhost:9096/tweet/topic/classifications');
-    } else {
-      // Fallback for other platforms
-      print("Other");
-      url = Uri.parse('http://127.0.0.1:9096/tweet/topic/classifications');
-    }
+    var url = Uri.parse('$basePath$path');
 
     response = await http.get(
       url,
@@ -1541,37 +1476,36 @@ class _DashDeskState extends State<DashDesk> {
       Navigator.of(context).pushReplacementNamed("Login");
       return [];
     } else if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
+      final data = json.decode(response.body) as List<dynamic>;
 
-      final List<TopicData> topicDataList = (data as List)
-          .map((json) => TopicData.fromJson(json as List<dynamic>))
+      final List<TopicData> topicDataList = data
+          .map((jsonItem) =>
+              TopicData.fromJson(jsonItem as Map<String, dynamic>))
           .toList();
+      cachedData = topicDataList;
 
-      cachedData = topicDataList; // Store fetched data in the cache
       return topicDataList;
     } else {
       throw Exception(response.body);
     }
   }
 
-  Future<List<TopicData>> getRecentTopic() async {
-    if (cachedRecentTopicData != null) {
-      // Return the cached recent topic data if it exists
-      return cachedRecentTopicData!;
+  Future<int> getRecentTopic() async {
+    if (TweetNumber != null) {
+      return TweetNumber!;
     }
-
     ipAddress = await getIpAddress();
 
-    var url;
-    if (kIsWeb) {
-      url = Uri.parse('http://127.0.0.1:9096/tweet/recent/topic');
-    } else if (Platform.isAndroid) {
-      url = Uri.parse('http://10.0.2.2:9096/tweet/recent/topic');
-    } else if (Platform.isIOS) {
-      url = Uri.parse('http://localhost:9096/tweet/recent/topic');
-    } else {
-      url = Uri.parse('http://127.0.0.1:9096/tweet/recent/topic');
-    }
+    String basePath = kIsWeb
+        ? 'http://127.0.0.1:9096'
+        : Platform.isAndroid
+            ? 'http://10.0.2.2:9096'
+            : Platform.isIOS
+                ? 'http://localhost:9096'
+                : 'http://127.0.0.1:9096';
+    String path = '/dataSummaries/numOfTweets';
+
+    var url = Uri.parse('$basePath$path');
 
     response = await http.get(
       url,
@@ -1584,17 +1518,11 @@ class _DashDeskState extends State<DashDesk> {
 
     if (response.statusCode == 401) {
       Navigator.of(context).pushReplacementNamed("Login");
-      return [];
+      return 0;
     } else if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-
-      final List<TopicData> topicDataList = (data as List)
-          .map((json) => TopicData.fromJson(json as List<dynamic>))
-          .toList();
-
-      cachedRecentTopicData =
-          topicDataList; // Store fetched recent topic data in the cache
-      return topicDataList;
+      final int data = json.decode(response.body);
+      TweetNumber = data;
+      return data;
     } else {
       throw Exception(response.body);
     }
@@ -1638,8 +1566,8 @@ class _DashDeskState extends State<DashDesk> {
 
         return PieChartSectionData(
           color: getRandomColor(),
-          value: topicData.count.toDouble(),
-          title: '${topicData.topic}\n${topicData.count}',
+          value: topicData.totalTweets.toDouble(),
+          title: '${topicData.topic}\n${topicData.totalTweets}',
           radius: radius,
           titleStyle: TextStyle(
             fontSize: fontSize,
@@ -1680,9 +1608,9 @@ class _DashDeskState extends State<DashDesk> {
                   PieSeries<TopicData, String>(
                     dataSource: topicDataList,
                     xValueMapper: (TopicData data, _) => data.topic,
-                    yValueMapper: (TopicData data, _) => data.count,
+                    yValueMapper: (TopicData data, _) => data.totalTweets,
                     dataLabelMapper: (TopicData data, _) =>
-                        '${data.topic}\n${data.count}',
+                        '${data.topic}\n${data.totalTweets}',
                     dataLabelSettings: DataLabelSettings(
                       isVisible: true,
                       labelPosition: ChartDataLabelPosition.outside,
@@ -1728,7 +1656,7 @@ class _DashDeskState extends State<DashDesk> {
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Text(
-                  'Recent Topics',
+                  'Tweets Classified',
                   style: TextStyle(
                     fontSize: 24,
                     color: Colors.white,
@@ -1748,34 +1676,30 @@ class _DashDeskState extends State<DashDesk> {
   }
 
   Widget buildRecentTopicsList() {
-    return FutureBuilder<List<TopicData>>(
+    return FutureBuilder<int>(
       future: getRecentTopic(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(child: CircularProgressIndicator());
         } else if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
-        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+        } else if (!snapshot.hasData) {
+          // Corrected condition
           return Center(child: Text('No data available'));
         } else {
-          final topicDataList = snapshot.data!;
-          return ListView.builder(
-            itemCount: topicDataList.length,
-            itemBuilder: (context, index) {
-              final data = topicDataList[index];
-              return ListTile(
-                title: Center(
-                  child: Text(
-                    '${data.topic}: ${data.count}',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blueGrey,
-                    ),
-                  ),
-                ),
-              );
-            },
+          final int topicDataCount = snapshot.data!;
+          // Correct way to convert double to String for display
+          return Center(
+            child: Text(
+              'Classified Tweets\nSo Far\n${topicDataCount.toString()}',
+              textAlign: TextAlign
+                  .center, // Ensure the text is centered if it wraps to a new line.
+              style: TextStyle(
+                fontSize: 23, // Increased font size for larger text
+                fontWeight: FontWeight.bold,
+                color: Colors.black54,
+              ),
+            ),
           );
         }
       },
@@ -1786,27 +1710,18 @@ class _DashDeskState extends State<DashDesk> {
     if (cachedRecentHateSpeechData != null) {
       return cachedRecentHateSpeechData!;
     }
-
     ipAddress = await getIpAddress();
-    var url;
-    if (kIsWeb) {
-      // Code specific to web or Chrome
-      print("Chrome or web");
-      url = Uri.parse('http://127.0.0.1:9096/tweet/summary/offensive');
-    } else if (Platform.isAndroid) {
-      // Android-specific code
-      print("Android");
-      url = Uri.parse('http://10.0.2.2:9096/tweet/summary/offensive');
-    } else if (Platform.isIOS) {
-      // iOS-specific code
-      print("iOS");
-      url = Uri.parse('http://localhost:9096/tweet/summary/offensive');
-    } else {
-      // Fallback for other platforms
-      print("Other");
-      url = Uri.parse('http://127.0.0.1:9096/tweet/summary/offensive');
-    }
 
+    String basePath = kIsWeb
+        ? 'http://127.0.0.1:9096'
+        : Platform.isAndroid
+            ? 'http://10.0.2.2:9096'
+            : Platform.isIOS
+                ? 'http://localhost:9096'
+                : 'http://127.0.0.1:9096';
+    String path = '/dataSummaries/offensiveSummary';
+
+    var url = Uri.parse('$basePath$path');
     response = await http.get(
       url,
       headers: {
@@ -1822,13 +1737,13 @@ class _DashDeskState extends State<DashDesk> {
     } else if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
 
-      final List<OffensiveData> topRegion = (data as List)
-          .map((json) => OffensiveData.fromJson(json as List<dynamic>))
+      final List<OffensiveData> offensiveDataList = data
+          .map((jsonItem) =>
+              OffensiveData.fromJson(jsonItem as Map<String, dynamic>))
           .toList();
+      cachedRecentHateSpeechData = offensiveDataList; // Store
 
-      cachedRecentHateSpeechData =
-          topRegion; // Store fetched top regions data in the cache
-      return topRegion;
+      return offensiveDataList;
     } else {
       throw Exception(response.body);
     }
@@ -1841,25 +1756,17 @@ class _DashDeskState extends State<DashDesk> {
     }
 
     ipAddress = await getIpAddress();
-    var url;
 
-    if (kIsWeb) {
-      // Code specific to web or Chrome
-      print("Chrome or web");
-      url = Uri.parse('http://127.0.0.1:9096/tweeter/user/global/distribution');
-    } else if (Platform.isAndroid) {
-      // Android-specific code
-      print("Android");
-      url = Uri.parse('http://10.0.2.2:9096/tweeter/user/global/distribution');
-    } else if (Platform.isIOS) {
-      // iOS-specific code
-      print("iOS");
-      url = Uri.parse('http://localhost:9096/tweeter/user/global/distribution');
-    } else {
-      // Fallback for other platforms
-      print("Other");
-      url = Uri.parse('http://127.0.0.1:9096/tweeter/user/global/distribution');
-    }
+    String basePath = kIsWeb
+        ? 'http://127.0.0.1:9096'
+        : Platform.isAndroid
+            ? 'http://10.0.2.2:9096'
+            : Platform.isIOS
+                ? 'http://localhost:9096'
+                : 'http://127.0.0.1:9096';
+    String path = '/dataSummaries/topOffensiveRegions';
+
+    var url = Uri.parse('$basePath$path');
 
     response = await http.get(
       url,
@@ -1878,7 +1785,7 @@ class _DashDeskState extends State<DashDesk> {
       _tooltip = TooltipBehavior(enable: true);
 
       final List<CountryData> countryDataList = (data as List)
-          .map((json) => CountryData.fromJson(json as List<dynamic>))
+          .map((json) => CountryData.fromJson(json as Map<String, dynamic>))
           .toList();
 
       cachedGlobalDistributionData =
@@ -1896,25 +1803,17 @@ class _DashDeskState extends State<DashDesk> {
     }
 
     ipAddress = await getIpAddress();
-    var url;
 
-    if (kIsWeb) {
-      // Code specific to web or Chrome
-      print("Chrome or web");
-      url = Uri.parse('http://127.0.0.1:9096/tweeter/user/top/regions');
-    } else if (Platform.isAndroid) {
-      // Android-specific code
-      print("Android");
-      url = Uri.parse('http://10.0.2.2:9096/tweeter/user/top/regions');
-    } else if (Platform.isIOS) {
-      // iOS-specific code
-      print("iOS");
-      url = Uri.parse('http://localhost:9096/tweeter/user/top/regions');
-    } else {
-      // Fallback for other platforms
-      print("Other");
-      url = Uri.parse('http://127.0.0.1:9096/tweeter/user/top/regions');
-    }
+    String basePath = kIsWeb
+        ? 'http://127.0.0.1:9096'
+        : Platform.isAndroid
+            ? 'http://10.0.2.2:9096'
+            : Platform.isIOS
+                ? 'http://localhost:9096'
+                : 'http://127.0.0.1:9096';
+    String path = '/dataSummaries/regionsOffensive';
+
+    var url = Uri.parse('$basePath$path');
 
     response = await http.get(
       url,
@@ -1931,13 +1830,13 @@ class _DashDeskState extends State<DashDesk> {
     } else if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
 
-      final List<CountryData> topRegion = (data as List)
-          .map((json) => CountryData.fromJson(json as List<dynamic>))
+      final List<CountryData> countryDataList = (data as List)
+          .map((json) => CountryData.fromJson(json as Map<String, dynamic>))
           .toList();
 
       cachedTopRegions =
-          topRegion; // Store fetched top regions data in the cache
-      return topRegion;
+          countryDataList; // Store fetched top regions data in the cache
+      return countryDataList;
     } else {
       throw Exception(response.body);
     }
@@ -2007,7 +1906,7 @@ class _DashDeskState extends State<DashDesk> {
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Text(
-                  'Bar Region offensive',
+                  'Top Offensive Region',
                   style: TextStyle(
                     fontSize: 24,
                     color: Colors.white,
@@ -2052,7 +1951,7 @@ class _DashDeskState extends State<DashDesk> {
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Text(
-                  'Top Regions Offensive',
+                  'Regions Offensive Tweets',
                   style: TextStyle(
                     fontSize: 24,
                     color: Colors.white,
@@ -2175,10 +2074,10 @@ class _DashDeskState extends State<DashDesk> {
                 series: <CircularSeries>[
                   PieSeries<OffensiveData, String>(
                     dataSource: cachedRecentPornographyData,
-                    xValueMapper: (OffensiveData data, _) => data.offensive,
-                    yValueMapper: (OffensiveData data, _) => data.count,
+                    xValueMapper: (OffensiveData data, _) => data.topic,
+                    yValueMapper: (OffensiveData data, _) => data.totalTweets,
                     dataLabelMapper: (OffensiveData data, _) =>
-                        '${data.offensive}\n${data.count}',
+                        '${data.topic}\n${data.totalTweets}',
                     dataLabelSettings: DataLabelSettings(
                       isVisible: true,
                       labelPosition: ChartDataLabelPosition.outside,
@@ -2254,26 +2153,22 @@ class _DashDeskState extends State<DashDesk> {
     }
 
     Future<String> getIsAbusive(String message) async {
+      print(token);
       ipAddress = await getIpAddress();
 
-      final userData = {
-        "message": message,
-      };
+      String basePath = kIsWeb
+          ? 'http://127.0.0.1:9096'
+          : Platform.isAndroid
+              ? 'http://10.0.2.2:9096'
+              : Platform.isIOS
+                  ? 'http://localhost:9096'
+                  : 'http://127.0.0.1:9096';
+      String path = '/classify/hate';
 
-      final jsonData = jsonEncode(userData);
+      var url = Uri.parse('$basePath$path')
+          .replace(queryParameters: {'text': message});
 
-      var url;
-      if (kIsWeb) {
-        url = Uri.parse('http://127.0.0.1:9096/model/abusive');
-      } else if (Platform.isAndroid) {
-        url = Uri.parse('http://10.0.2.2:9096/model/abusive');
-      } else if (Platform.isIOS) {
-        url = Uri.parse('http://localhost:9096/model/abusive');
-      } else {
-        url = Uri.parse('http://127.0.0.1:9096/model/abusive');
-      }
-
-      response = await http.post(
+      response = await http.get(
         url,
         headers: {
           "Accept": "application/json",
@@ -2281,7 +2176,6 @@ class _DashDeskState extends State<DashDesk> {
           "token": '$token',
           "X-Forwarded-For": ipAddress,
         },
-        body: jsonData,
       );
 
       if (response.statusCode == 401) {
@@ -2298,18 +2192,19 @@ class _DashDeskState extends State<DashDesk> {
     Future<String> getIsTopic(String message) async {
       ipAddress = await getIpAddress();
 
-      var url;
-      if (kIsWeb) {
-        url = Uri.parse('http://127.0.0.1:9096/model/topic');
-      } else if (Platform.isAndroid) {
-        url = Uri.parse('http://10.0.2.2:9096/model/topic');
-      } else if (Platform.isIOS) {
-        url = Uri.parse('http://localhost:9096/model/topic');
-      } else {
-        url = Uri.parse('http://127.0.0.1:9096/model/topic');
-      }
+      String basePath = kIsWeb
+          ? 'http://127.0.0.1:9096'
+          : Platform.isAndroid
+              ? 'http://10.0.2.2:9096'
+              : Platform.isIOS
+                  ? 'http://localhost:9096'
+                  : 'http://127.0.0.1:9096';
+      String path = '/classify/topic';
 
-      response = await http.post(
+      var url = Uri.parse('$basePath$path')
+          .replace(queryParameters: {'text': message});
+
+      response = await http.get(
         url,
         headers: {
           "Accept": "application/json",
@@ -2317,7 +2212,6 @@ class _DashDeskState extends State<DashDesk> {
           "token": '$token',
           "X-Forwarded-For": ipAddress,
         },
-        body: jsonEncode({'message': message}),
       );
 
       if (response.statusCode == 401) {
@@ -2360,17 +2254,30 @@ class _DashDeskState extends State<DashDesk> {
             onPressed: () async {
               String message = textEditingController.text;
               String result = await getIsAbusive(message);
-              AwesomeDialog(
-                context: context,
-                dialogType: DialogType.SUCCES,
-                animType: AnimType.BOTTOMSLIDE,
-                title: result,
-                desc: "Topics model classified this as : " + result,
-                btnOkOnPress: () {},
-              )..show();
+
+              if (result == '"HateSpeech"' || result == '"Offensive"') {
+                AwesomeDialog(
+                  context: context,
+                  dialogType: DialogType.error,
+                  animType: AnimType.BOTTOMSLIDE,
+                  title: result,
+                  desc: "Offinsive model classified this as : " + result,
+                  btnOkOnPress: () {},
+                  btnOkColor: Colors.red,
+                )..show();
+              } else {
+                AwesomeDialog(
+                  context: context,
+                  dialogType: DialogType.SUCCES,
+                  animType: AnimType.BOTTOMSLIDE,
+                  title: result,
+                  desc: "Offinsive model classified this as : " + result,
+                  btnOkOnPress: () {},
+                )..show();
+              }
             },
             child: Text(
-              "Check if Abusive",
+              "Check if Offinsive",
               style: TextStyle(color: Colors.white),
             ),
             style: ElevatedButton.styleFrom(
@@ -2387,13 +2294,13 @@ class _DashDeskState extends State<DashDesk> {
               String message = textEditingController.text;
               String result = await getIsTopic(message);
               AwesomeDialog(
-                context: context,
-                dialogType: DialogType.SUCCES,
-                animType: AnimType.BOTTOMSLIDE,
-                title: result,
-                desc: "Abusive model classified this as : " + result,
-                btnOkOnPress: () {},
-              )..show();
+                  context: context,
+                  dialogType: DialogType.SUCCES,
+                  animType: AnimType.BOTTOMSLIDE,
+                  title: result,
+                  desc: "Topics model classified this as : " + result,
+                  btnOkOnPress: () {})
+                ..show();
             },
             child: Text(
               "Check the Topic",

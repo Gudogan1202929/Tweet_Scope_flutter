@@ -1,31 +1,25 @@
-class TweetModel {
-  final int tweetId;
-  final String tweetContent;
-  final String topic;
-  final String offensiveType;
-  final DateTime timestamp;
+class TweetSummary {
+  final int numHate;
+  final int numNormal;
+  final int numOffensive;
+  final DateTime time;
 
-  TweetModel({
-    required this.tweetId,
-    required this.tweetContent,
-    required this.topic,
-    required this.offensiveType,
-    required this.timestamp,
+  TweetSummary({
+    required this.numHate,
+    required this.numNormal,
+    required this.numOffensive,
+    required this.time,
   });
 
-  factory TweetModel.fromJson(List<dynamic> json) {
-    String dateStr = json[5] as String;
-    int indexOfT = dateStr.indexOf("T");
-    if (indexOfT != -1) {
-      dateStr = dateStr.substring(0, indexOfT);
-    }
-    return TweetModel(
-      tweetId: json[0] as int,
-      tweetContent: json[4] as String,
-      topic: json[3] as String,
-      offensiveType: json[2] as String,
-      timestamp: DateTime.tryParse(dateStr) ??
-          DateTime.now(), // Provide a default value if parsing fails
+  factory TweetSummary.fromJson(Map<String, dynamic> json) {
+    String dateString = json['time'];
+    // Extract only the date part before the 'T'
+    dateString = dateString.split('T')[0];
+    return TweetSummary(
+      numHate: json['numHate'],
+      numNormal: json['numNormal'],
+      numOffensive: json['numOffensive'],
+      time: DateTime.parse(dateString), // Now using only the date part
     );
   }
 }

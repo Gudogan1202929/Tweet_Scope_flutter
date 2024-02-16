@@ -1,20 +1,16 @@
 class TopicData {
   final String topic;
-  final int count;
+  final int totalTweets;
 
   TopicData({
     required this.topic,
-    required this.count,
+    required this.totalTweets,
   });
 
-  factory TopicData.fromJson(List<dynamic> json) {
-    if (json.length == 2) {
-      return TopicData(
-        topic: json[0] as String,
-        count: json[1] as int,
-      );
-    } else {
-      throw Exception('Invalid JSON format for TopicData');
-    }
+  factory TopicData.fromJson(Map<String, dynamic> json) {
+    return TopicData(
+      topic: json['topic'] as String,
+      totalTweets: json['totalTweets'] as int,
+    );
   }
 }
