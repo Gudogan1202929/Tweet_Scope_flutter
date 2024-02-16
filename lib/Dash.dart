@@ -108,7 +108,6 @@ class _TestModelState extends State<TestModel> {
   TextEditingController textEditingController = TextEditingController();
 
   Future<String> getIsAbusive(String message) async {
-    print(token);
     ipAddress = await getIpAddress();
 
     String basePath = kIsWeb
@@ -207,7 +206,6 @@ class _TestModelState extends State<TestModel> {
   }
 
   void showMyDialog(BuildContext context, String content) {
-    print(content);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (content == '"HateSpeech"' || content == '"Offensive"') {
         AwesomeDialog(
@@ -940,6 +938,10 @@ class _TweetCategoryChartState extends State<TweetCategoryChart> {
   }
 
   Future<List<TweetSummary>> getData() async {
+    if (cachedTweetData != null) {
+      // Return the cached top regions data if it exists
+      return cachedTweetData!;
+    }
     ipAddress = await getIpAddress();
 
     String basePath = kIsWeb
@@ -973,6 +975,8 @@ class _TweetCategoryChartState extends State<TweetCategoryChart> {
               TweetSummary.fromJson(jsonItem as Map<String, dynamic>))
           .toList();
 
+      cachedTweetData = summaries;
+
       return summaries;
     } else {
       throw Exception(response.body);
@@ -988,7 +992,6 @@ class _TweetCategoryChartState extends State<TweetCategoryChart> {
 
   Future<void> fetchData() async {
     data = await getData();
-    print(data.length);
   }
 
   Widget createChartWidget(List<ChartData> chartData) {
@@ -1036,7 +1039,6 @@ class _TweetCategoryChartState extends State<TweetCategoryChart> {
 
     List<ChartData> chartDataList = aggregatedData.values.toList();
     chartDataList.sort((a, b) => a.monthYear.compareTo(b.monthYear));
-    print(chartDataList);
     return chartDataList;
   }
 
@@ -2153,7 +2155,6 @@ class _DashDeskState extends State<DashDesk> {
     }
 
     Future<String> getIsAbusive(String message) async {
-      print(token);
       ipAddress = await getIpAddress();
 
       String basePath = kIsWeb
